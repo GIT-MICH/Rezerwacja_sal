@@ -1,11 +1,8 @@
+import datetime
+
 from django.shortcuts import render, redirect
 from django.views import View
 from .models import ConferenceRoom
-
-
-class Base(View):
-    def get(self, request):
-        return render(request, 'reservation_app/base.html')
 
 
 class AddRoomView(View):
@@ -39,5 +36,22 @@ class AddRoomView(View):
         ConferenceRoom.objects.create(name=name, capacity=capacity, projector_availability=projector)
         return redirect('room-list')
 
-class AllRoomView(View):
+
+class RoomListView(View):
     def get(self, request):
+        rooms = ConferenceRoom.objects.all()
+        # for room in rooms:
+        #     reservation_dates = [reservation.date for reservation in room.reservation_set.all()]
+        #     room.reserved = datetime.date.today() in reservation_dates
+        return render(
+            request,
+            'reservation_app/rooms.html',
+            {'rooms': rooms}
+        )
+
+
+class DeleteRoomView(View):
+    def get(self, request, room_id):
+        room = ConferenceRoom.objects.get(id=room_id)
+        room.delete()
+        return redirect('room-list')
