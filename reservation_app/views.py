@@ -39,10 +39,10 @@ class AddRoomView(View):
 
 class RoomListView(View):
     def get(self, request):
-        rooms = ConferenceRoom.objects.all()
-        # for room in rooms:
-        #     reservation_dates = [reservation.date for reservation in room.reservation_set.all()]
-        #     room.reserved = datetime.date.today() in reservation_dates
+        rooms = ConferenceRoom.objects.all().order_by('id')
+        for room in rooms:
+            reservation_dates = [reservation.date for reservation in room.roomreservation_set.all()]
+            room.reserved = datetime.date.today() in reservation_dates
         return render(
             request,
             'reservation_app/rooms.html',
@@ -77,19 +77,19 @@ class ModifyRoomView(View):
             return render(
                 request,
                 'reservation_app/modify_room.html',
-                {'room': room}, {'error': 'Nie podano nazwy sali'}
+                {'room': room, 'error': 'Nie podano nazwy sali'}
             )
         if capacity <= 0:
             return render(
                 request,
                 'reservation_app/modify_room.html',
-                {'room': room}, {'error': 'Pojemność sali musi być dodatnia'}
+                {'room': room, 'error': 'Pojemność sali musi być dodatnia'}
             )
         if name != room.name and ConferenceRoom.objects.filter(name=name).first():
             return render(
                 request,
                 'reservation_app/modify_room.html',
-                {'room': room}, {'error': 'Sala o podanej nazwie istnieje'}
+                {'room': room, 'error': 'Sala o podanej nazwie istnieje'}
             )
         room.name = name
         room.capacity = capacity
@@ -111,17 +111,31 @@ class ReservationView(View):
         room = ConferenceRoom.objects.get(id=room_id)
         date = request.POST.get('reservation-date')
         comment = request.POST.get('comment')
-        if RoomReservation.objects.filter(room=room, date=date):
+
+        if RoomReservation.objects.filter(room_id=room, date=date):
             return render(
                 request,
                 'reservation_app/reservation.html',
-                {'room': room}, {'error': 'Sala jest już zarezerwowana!'}
+                {'room': room, 'error': 'Sala jest już zarezerwowana!'}
             )
         if date < str(datetime.date.today()):
             return render(
                 request,
                 'reservation_app/reservation.html',
-                {'room': room}, {'error': 'Data jest z przeszłości!'}
+                {'room': room, 'error': 'Data jest z przeszłości!'}
             )
-        RoomReservation.objects.create(room=room, date=date, comment=comment)
+
+        RoomReservation.objects.create(room_id=room, date=date, comment=comment)
         return redirect('room-list')
+
+
+class RoomDetailsView(View):
+    def get(self, request, room_id):
+        room = ConferenceRoom.objects.get(id=room_id)
+        reservations = room.roomreservation_set.filter(date__gte=str(datetime.date.today())).order_by('date')
+        return render(
+            request,
+            'reservation_app/room_details.html',
+            {'room': room, 'reservations': reservations}
+        )
+
