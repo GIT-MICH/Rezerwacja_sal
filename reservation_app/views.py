@@ -101,28 +101,30 @@ class ModifyRoomView(View):
 class ReservationView(View):
     def get(self, request, room_id):
         room = ConferenceRoom.objects.get(id=room_id)
+        reservations = room.roomreservation_set.filter(date__gte=str(datetime.date.today())).order_by('date')
         return render(
             request,
             'reservation_app/reservation.html',
-            {'room': room}
+            {'room': room, 'reservations': reservations}
         )
 
     def post(self, request, room_id):
         room = ConferenceRoom.objects.get(id=room_id)
         date = request.POST.get('reservation-date')
         comment = request.POST.get('comment')
+        reservations = room.roomreservation_set.filter(date__gte=str(datetime.date.today())).order_by('date')
 
         if RoomReservation.objects.filter(room_id=room, date=date):
             return render(
                 request,
                 'reservation_app/reservation.html',
-                {'room': room, 'error': 'Sala jest już zarezerwowana!'}
+                {'room': room, 'reservtions': reservations, 'error': 'Sala jest już zarezerwowana!'}
             )
         if date < str(datetime.date.today()):
             return render(
                 request,
                 'reservation_app/reservation.html',
-                {'room': room, 'error': 'Data jest z przeszłości!'}
+                {'room': room, 'reservations': reservations, 'error': 'Data jest z przeszłości!'}
             )
 
         RoomReservation.objects.create(room_id=room, date=date, comment=comment)
@@ -137,5 +139,31 @@ class RoomDetailsView(View):
             request,
             'reservation_app/room_details.html',
             {'room': room, 'reservations': reservations}
+        )
+
+
+class SearchView(View):
+    def get(self, request):
+        name = request.GET.get('room-name')
+        capacity = request.GET.get('capacity')
+        capacity = int(capacity) if capacity else 0
+        projector = request.GET.get('projector') == 'on'
+
+        rooms = ConferenceRoom.objects.all()
+        if projector:
+            rooms = rooms.filter(projector_availability=projector)
+        if capacity:
+            rooms = rooms.filter(capacity__gte=capacity)
+        if name:
+            rooms = rooms.filter(name__contains=name)
+
+        for room in rooms:
+            reservation_dates = [reservation.date for reservation in room.roomreservation_set.all()]
+            room.reserved = str(datetime.date.today() in reservation_dates)
+
+        return render(
+            request,
+            'reservation_app/rooms.html',
+            {'rooms': rooms, 'date': datetime.date.today()}
         )
 
