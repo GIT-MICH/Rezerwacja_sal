@@ -155,7 +155,7 @@ class SearchView(View):
         if capacity:
             rooms = rooms.filter(capacity__gte=capacity)
         if name:
-            rooms = rooms.filter(name__contains=name)
+            rooms = rooms.filter(name__icontains=name)
 
         for room in rooms:
             reservation_dates = [reservation.date for reservation in room.roomreservation_set.all()]
@@ -164,6 +164,6 @@ class SearchView(View):
         return render(
             request,
             'reservation_app/rooms.html',
-            {'rooms': rooms, 'date': datetime.date.today()}
+            {'rooms': rooms}
         )
 
